@@ -1,0 +1,11 @@
+
+> beam-lab@0.1.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 279 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+7:30:36 AM [vite] hmr update /src/App.tsx, /src/index.css
+7:31:09 AM [vite] page reload src/solver/solver.test.ts
