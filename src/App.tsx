@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BeamConfig, AnalysisResult } from './solver/types';
 import { analyzeBeam } from './solver/solver';
-import { validateBeamConfig } from './solver/validation';
+import { validateBeamConfig, parseAndValidateEnvelope } from './solver/validation';
 import { EducationalWarning } from './components/EducationalWarning';
 import { Sidebar } from './components/Sidebar';
 import { BeamCanvas } from './components/BeamCanvas';
@@ -21,9 +21,9 @@ function getInitialConfig(): BeamConfig {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      const model = parsed?.model || parsed;
-      if (validateBeamConfig(model).isValid) {
-        return model;
+      const envRes = parseAndValidateEnvelope(parsed);
+      if (envRes.isValid && envRes.config) {
+        return envRes.config;
       }
     }
   } catch {
@@ -40,6 +40,7 @@ export function App() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult>(() => analyzeBeam(config));
   const [isStale, setIsStale] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [hasDraftErrors, setHasDraftErrors] = useState<boolean>(false);
   const [isResetOpen, setIsResetOpen] = useState<boolean>(false);
 
   // Sync validation, stale state, and localStorage on config change
@@ -84,7 +85,7 @@ export function App() {
   };
 
   const handleExportCSV = () => {
-    if (analysisResult.isValid && !isStale) {
+    if (analysisResult.isValid && !isStale && !hasDraftErrors) {
       // Export analysisResult.config matching analysisResult.reactions
       exportToCSV(analysisResult.config, analysisResult.reactions, analysisResult.diagrams);
     }
@@ -102,15 +103,14 @@ export function App() {
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        const modelToLoad = parsed?.model || parsed;
-        const val = validateBeamConfig(modelToLoad);
-        if (val.isValid) {
-          setConfig(modelToLoad);
-          const res = analyzeBeam(modelToLoad);
+        const envRes = parseAndValidateEnvelope(parsed);
+        if (envRes.isValid && envRes.config) {
+          setConfig(envRes.config);
+          const res = analyzeBeam(envRes.config);
           setAnalysisResult(res);
           setIsStale(false);
         } else {
-          alert('Invalid beam model file: ' + val.errors.join(', '));
+          alert('Invalid beam model file: ' + envRes.errors.join(', '));
         }
       } catch {
         alert('Failed to parse JSON model file.');
@@ -128,147 +128,150 @@ export function App() {
   };
 
   const handlePrint = () => {
-    if (analysisResult.isValid && !isStale) {
+    if (analysisResult.isValid && !isStale && !hasDraftErrors) {
       window.print();
     }
   };
 
-  const isExportDisabled = !analysisResult.isValid || isStale;
+  const isExportDisabled = !analysisResult.isValid || isStale || hasDraftErrors;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased">
-      <EducationalWarning />
+      <div className="print:hidden flex-1 flex flex-col">
+        <EducationalWarning />
 
-      {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0 print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">
-            B
-          </div>
-          <div>
-            <h1 className="text-base font-extrabold text-slate-100 tracking-tight flex items-center gap-2">
-              Beam Lab <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded font-mono font-medium">MVP</span>
-            </h1>
-            <p className="text-[11px] text-slate-400">Euler-Bernoulli Structural Beam Solver</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCSV}
-            disabled={isExportDisabled}
-            title={isExportDisabled ? 'Solve model to enable CSV export' : 'Export CSV data'}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" /> CSV Data
-          </button>
-          <button
-            onClick={handlePrint}
-            disabled={isExportDisabled}
-            title={isExportDisabled ? 'Solve model to enable Print report' : 'Print report'}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print Report
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workbench Layout */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <Sidebar
-          config={config}
-          onChange={handleConfigChange}
-          onSolve={handleSolve}
-          isStale={isStale}
-          validationErrors={validationErrors}
-          onExportJSON={handleExportJSON}
-          onImportJSON={handleImportJSON}
-          onReset={() => setIsResetOpen(true)}
-        />
-
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 bg-slate-950 print:bg-white print:p-0">
-          <BeamCanvas config={config} onUpdateLoadPosition={handleUpdateLoadPosition} />
-
-          <ResultCards result={analysisResult} isStale={isStale} />
-
-          {/* Visualization Navigation Tabs */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2 print:hidden">
-            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeTab === 'all'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                All Diagrams
-              </button>
-              <button
-                onClick={() => setActiveTab('sfd')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeTab === 'sfd'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Shear (SFD)
-              </button>
-              <button
-                onClick={() => setActiveTab('bmd')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeTab === 'bmd'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Moment (BMD)
-              </button>
-              <button
-                onClick={() => setActiveTab('deflection')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeTab === 'deflection'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Deflection
-              </button>
-              <button
-                onClick={() => setActiveTab('handcalc')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  activeTab === 'handcalc'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Hand Calculations
-              </button>
+        {/* Header */}
+        <header className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-600/30">
+              B
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold text-slate-100 tracking-tight flex items-center gap-2">
+                Beam Lab <span className="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded font-mono font-medium">MVP</span>
+              </h1>
+              <p className="text-[11px] text-slate-400">Euler-Bernoulli Structural Beam Solver</p>
             </div>
           </div>
 
-          {/* Diagrams Display */}
-          {(activeTab === 'all' || activeTab === 'sfd') && (
-            <DiagramView result={analysisResult} type="shear" isStale={isStale} />
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCSV}
+              disabled={isExportDisabled}
+              title={isExportDisabled ? 'Solve model to enable CSV export' : 'Export CSV data'}
+              className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV Data
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={isExportDisabled}
+              title={isExportDisabled ? 'Solve model to enable Print report' : 'Print report'}
+              className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print Report
+            </button>
+          </div>
+        </header>
 
-          {(activeTab === 'all' || activeTab === 'bmd') && (
-            <DiagramView result={analysisResult} type="moment" isStale={isStale} />
-          )}
+        {/* Main Workbench Layout */}
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          <Sidebar
+            config={config}
+            onChange={handleConfigChange}
+            onSolve={handleSolve}
+            isStale={isStale}
+            validationErrors={validationErrors}
+            onExportJSON={handleExportJSON}
+            onImportJSON={handleImportJSON}
+            onReset={() => setIsResetOpen(true)}
+            onDraftValidityChange={(hasErr) => setHasDraftErrors(hasErr)}
+          />
 
-          {(activeTab === 'all' || activeTab === 'deflection') && (
-            <DiagramView result={analysisResult} type="deflection" isStale={isStale} />
-          )}
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 bg-slate-950">
+            <BeamCanvas config={config} onUpdateLoadPosition={handleUpdateLoadPosition} />
 
-          {activeTab === 'handcalc' && <HandCalcView result={analysisResult} />}
-        </main>
+            <ResultCards result={analysisResult} isStale={isStale} />
+
+            {/* Visualization Navigation Tabs */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-lg">
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    activeTab === 'all'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All Diagrams
+                </button>
+                <button
+                  onClick={() => setActiveTab('sfd')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    activeTab === 'sfd'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Shear (SFD)
+                </button>
+                <button
+                  onClick={() => setActiveTab('bmd')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    activeTab === 'bmd'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Moment (BMD)
+                </button>
+                <button
+                  onClick={() => setActiveTab('deflection')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    activeTab === 'deflection'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Deflection
+                </button>
+                <button
+                  onClick={() => setActiveTab('handcalc')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    activeTab === 'handcalc'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Hand Calculations
+                </button>
+              </div>
+            </div>
+
+            {/* Diagrams Display */}
+            {(activeTab === 'all' || activeTab === 'sfd') && (
+              <DiagramView result={analysisResult} type="shear" isStale={isStale} />
+            )}
+
+            {(activeTab === 'all' || activeTab === 'bmd') && (
+              <DiagramView result={analysisResult} type="moment" isStale={isStale} />
+            )}
+
+            {(activeTab === 'all' || activeTab === 'deflection') && (
+              <DiagramView result={analysisResult} type="deflection" isStale={isStale} />
+            )}
+
+            {activeTab === 'handcalc' && <HandCalcView result={analysisResult} />}
+          </main>
+        </div>
+
+        <ResetModal
+          isOpen={isResetOpen}
+          onConfirm={handleConfirmReset}
+          onCancel={() => setIsResetOpen(false)}
+        />
       </div>
-
-      <ResetModal
-        isOpen={isResetOpen}
-        onConfirm={handleConfirmReset}
-        onCancel={() => setIsResetOpen(false)}
-      />
 
       {/* Print-Only Comprehensive Report Snapshot */}
       <PrintReport result={analysisResult} />

@@ -1,8 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { validateBeamConfig } from './validation';
+import { validateBeamConfig, parseAndValidateEnvelope } from './validation';
 import { PRESETS } from '../presets';
 
-describe('Validation and Presets', () => {
+describe('Validation and Envelope Parsing', () => {
+  it('parseAndValidateEnvelope rejects unsupported outer schemaVersion (e.g. 999)', () => {
+    const validModel = PRESETS[0].config;
+    const invalidEnvelope = {
+      schemaVersion: 999,
+      model: validModel,
+    };
+
+    const res = parseAndValidateEnvelope(invalidEnvelope);
+    expect(res.isValid).toBe(false);
+    expect(res.errors[0]).toContain('Unsupported schema version: 999');
+  });
+
+  it('parseAndValidateEnvelope rejects missing or null inner model when schemaVersion is present', () => {
+    const nullModelEnvelope = {
+      schemaVersion: 1,
+      model: null,
+    };
+
+    const res = parseAndValidateEnvelope(nullModelEnvelope);
+    expect(res.isValid).toBe(false);
+    expect(res.errors[0]).toContain('Invalid schema envelope');
+  });
+
+  it('parseAndValidateEnvelope accepts bare legacy model without envelope', () => {
+    const validModel = PRESETS[0].config;
+    const res = parseAndValidateEnvelope(validModel);
+    expect(res.isValid).toBe(true);
+    expect(res.config).toEqual(validModel);
+  });
+
+  it('parseAndValidateEnvelope accepts valid schemaVersion: 1 envelope', () => {
+    const validModel = PRESETS[0].config;
+    const validEnvelope = {
+      schemaVersion: 1,
+      app: 'Beam Lab',
+      model: validModel,
+    };
+
+    const res = parseAndValidateEnvelope(validEnvelope);
+    expect(res.isValid).toBe(true);
+    expect(res.config).toEqual(validModel);
+  });
   it('validates all presets successfully', () => {
     PRESETS.forEach((preset) => {
       const val = validateBeamConfig(preset.config);

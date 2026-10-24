@@ -7,4 +7,9 @@
     background-color: white !important;
     color: black !important;
   }
+
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

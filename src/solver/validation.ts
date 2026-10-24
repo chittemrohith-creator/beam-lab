@@ -1,5 +1,49 @@
 import { BeamConfig } from './types';
 
+export function parseAndValidateEnvelope(parsed: unknown): {
+  isValid: boolean;
+  config?: BeamConfig;
+  errors: string[];
+} {
+  if (!parsed || typeof parsed !== 'object') {
+    return { isValid: false, errors: ['Invalid JSON model data: expected non-null object.'] };
+  }
+
+  const obj = parsed as Record<string, unknown>;
+
+  if ('schemaVersion' in obj && obj.schemaVersion !== undefined) {
+    if (typeof obj.schemaVersion !== 'number' || obj.schemaVersion !== 1) {
+      return {
+        isValid: false,
+        errors: [`Unsupported schema version: ${obj.schemaVersion}. Expected version 1.`],
+      };
+    }
+
+    if (!('model' in obj) || !obj.model || typeof obj.model !== 'object') {
+      return {
+        isValid: false,
+        errors: ['Invalid schema envelope: missing or null inner "model" object.'],
+      };
+    }
+
+    const val = validateBeamConfig(obj.model);
+    return {
+      isValid: val.isValid,
+      config: val.isValid ? (obj.model as BeamConfig) : undefined,
+      errors: val.errors,
+    };
+  }
+
+  // Bare legacy model or unversioned wrapper
+  const targetModel = ('model' in obj && obj.model && typeof obj.model === 'object') ? obj.model : obj;
+  const val = validateBeamConfig(targetModel);
+  return {
+    isValid: val.isValid,
+    config: val.isValid ? (targetModel as BeamConfig) : undefined,
+    errors: val.errors,
+  };
+}
+
 export function validateBeamConfig(config: unknown): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 

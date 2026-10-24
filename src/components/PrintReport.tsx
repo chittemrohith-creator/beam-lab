@@ -66,7 +66,7 @@ export const PrintReport: React.FC<PrintReportProps> = ({ result }) => {
     const areaPointsString = `${xToPx(0)},${zeroYPx} ${pointsString} ${xToPx(L)},${zeroYPx}`;
 
     return (
-      <div className="mb-4 border border-slate-300 rounded p-3 bg-slate-50">
+      <div className="mb-4 border border-slate-300 rounded p-3 bg-slate-50 print-avoid-break">
         <div className="flex justify-between items-center mb-1 text-xs font-bold text-slate-800">
           <span>{title}</span>
           <span>Max: {realMax.toFixed(3)} {unit}</span>
@@ -122,7 +122,7 @@ export const PrintReport: React.FC<PrintReportProps> = ({ result }) => {
       </div>
 
       {/* Model Overview & Geometry */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-6 print-avoid-break">
         <div className="border border-slate-300 rounded p-3 bg-slate-50 space-y-1">
           <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 border-b border-slate-200 pb-1">
             Geometry & Materials
@@ -174,7 +174,7 @@ export const PrintReport: React.FC<PrintReportProps> = ({ result }) => {
       </div>
 
       {/* Applied Loads Table */}
-      <div>
+      <div className="print-avoid-break">
         <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
           Applied Loads ({config.loads.length})
         </h2>
@@ -210,7 +210,7 @@ export const PrintReport: React.FC<PrintReportProps> = ({ result }) => {
       </div>
 
       {/* Critical Peak Summary */}
-      <div className="border border-slate-300 rounded p-3 bg-slate-50">
+      <div className="border border-slate-300 rounded p-3 bg-slate-50 print-avoid-break">
         <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 border-b border-slate-200 pb-1">
           Peak Internal Actions & Deflection
         </h2>

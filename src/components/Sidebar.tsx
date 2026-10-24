@@ -12,6 +12,7 @@ interface SidebarProps {
   onExportJSON: () => void;
   onImportJSON: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onReset: () => void;
+  onDraftValidityChange?: (hasErrors: boolean) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,10 +24,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onExportJSON,
   onImportJSON,
   onReset,
+  onDraftValidityChange,
 }) => {
   const [selectedPreset, setSelectedPreset] = useState<string>('');
-
   const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
+
+  // Reconcile/clear draft inputs when config is changed externally (drag, reset, import, preset)
+  React.useEffect(() => {
+    setDraftInputs((prev) => {
+      const next: Record<string, string> = {};
+      // Retain only draft entries that match valid load IDs currently present in config
+      const activeLoadIds = new Set(config.loads.map((l) => l.id));
+
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === 'length' || k === 'elasticModulus' || k === 'momentOfInertia') {
+          // If the parsed number in draft differs from config's numeric value, keep draft unless reset
+          next[k] = v;
+        } else if (k.startsWith('load-')) {
+          const loadId = k.split('-')[1];
+          if (activeLoadIds.has(loadId)) {
+            next[k] = v;
+          }
+        }
+      }
+      return next;
+    });
+  }, [config]);
+
+  // Check for any invalid/blank draft input
+  const draftErrors: string[] = [];
+  for (const [key, val] of Object.entries(draftInputs)) {
+    if (val.trim() === '' || isNaN(Number(val)) || !isFinite(Number(val))) {
+      draftErrors.push(`Field "${key}" has an incomplete or invalid numeric value.`);
+    }
+  }
+
+  const hasDraftErrors = draftErrors.length > 0;
+
+  React.useEffect(() => {
+    if (onDraftValidityChange) {
+      onDraftValidityChange(hasDraftErrors);
+    }
+  }, [hasDraftErrors, onDraftValidityChange]);
 
   const getInputValue = (key: string, numValue: number): string => {
     if (key in draftInputs) {
@@ -42,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ) => {
     setDraftInputs((prev) => ({ ...prev, [key]: rawVal }));
     const parsed = parseFloat(rawVal);
-    if (!isNaN(parsed) && isFinite(parsed)) {
+    if (rawVal.trim() !== '' && !isNaN(parsed) && isFinite(parsed)) {
       onValid(parsed);
     }
   };
@@ -97,6 +136,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleDeleteLoad = (id: string) => {
+    // Remove deleted load's drafts
+    setDraftInputs((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`load-${id}-`)) {
+          delete next[k];
+        }
+      });
+      return next;
+    });
+
     onChange({
       ...config,
       loads: config.loads.filter((l) => l.id !== id),
@@ -107,6 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setSelectedPreset(name);
     const found = PRESETS.find((p) => p.name === name);
     if (found) {
+      setDraftInputs({}); // Clear draft inputs on preset selection
       onChange(JSON.parse(JSON.stringify(found.config)));
     }
   };
@@ -129,7 +180,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={onSolve}
-          className={`w-full py-2.5 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-md ${
+          disabled={hasDraftErrors || validationErrors.length > 0}
+          className={`w-full py-2.5 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
             isStale
               ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
               : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
@@ -139,15 +191,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isStale ? 'Solve Beam Model' : 'Model Solved'}
         </button>
 
-        {validationErrors.length > 0 && (
+        {(validationErrors.length > 0 || hasDraftErrors) && (
           <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-3 text-xs text-rose-300 space-y-1">
             <div className="font-semibold flex items-center gap-1.5 text-rose-400">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>Validation Errors:</span>
             </div>
             <ul className="list-disc list-inside space-y-0.5 text-rose-200">
+              {draftErrors.map((err, idx) => (
+                <li key={`draft-${idx}`}>{err}</li>
+              ))}
               {validationErrors.map((err, idx) => (
-                <li key={idx}>{err}</li>
+                <li key={`val-${idx}`}>{err}</li>
               ))}
             </ul>
           </div>
@@ -473,7 +528,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onExportJSON}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-200 flex items-center justify-center gap-1.5"
+            disabled={hasDraftErrors || validationErrors.length > 0}
+            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-200 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download className="w-3.5 h-3.5" /> Save JSON
           </button>
