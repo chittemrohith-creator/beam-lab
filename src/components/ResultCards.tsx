@@ -4,9 +4,10 @@ import { ArrowUpRight, Gauge, Activity } from 'lucide-react';
 
 interface ResultCardsProps {
   result: AnalysisResult;
+  isStale?: boolean;
 }
 
-export const ResultCards: React.FC<ResultCardsProps> = ({ result }) => {
+export const ResultCards: React.FC<ResultCardsProps> = ({ result, isStale }) => {
   if (!result.isValid) return null;
 
   const { reactions, extrema, config } = result;
@@ -26,7 +27,15 @@ export const ResultCards: React.FC<ResultCardsProps> = ({ result }) => {
   const maxDeflection_mm = (Math.abs(extrema.maxAbsDeflection.value) * 1000).toFixed(3);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3">
+    <div className="relative grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3">
+      {isStale && (
+        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl border border-amber-500/40">
+          <span className="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-1 rounded shadow-lg uppercase tracking-wider animate-pulse">
+            Stale Results — Click "Solve Beam Model" to Update
+          </span>
+        </div>
+      )}
+
       {/* Reactions Card */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg space-y-2 print:border-slate-300">
         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider print:text-slate-800">
@@ -78,7 +87,7 @@ export const ResultCards: React.FC<ResultCardsProps> = ({ result }) => {
         </div>
         <div className="space-y-1 font-mono text-sm">
           <div className="flex justify-between py-1 border-b border-slate-800 text-slate-300">
-            <span>|\delta max|:</span>
+            <span>|δ max|:</span>
             <span className="font-bold text-amber-300">{maxDeflection_mm} mm</span>
           </div>
           <div className="flex justify-between py-1 border-b border-slate-800 text-slate-300 text-xs">

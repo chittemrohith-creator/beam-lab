@@ -161,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-400 block mb-1">
-              Length $L$ (m)
+              Length L (m)
             </label>
             <input
               type="number"
@@ -191,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-400 block mb-1">
-              Elasticity $E$ (GPa)
+              Elasticity E (GPa)
             </label>
             <input
               type="number"
@@ -205,7 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <div>
             <label className="text-xs text-slate-400 block mb-1">
-              Inertia $I_z$ (mm⁴)
+              Inertia Iz (mm⁴)
             </label>
             <input
               type="number"
@@ -278,7 +278,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-slate-400 block">
-                        Pos $x$ (m)
+                        Pos x (m)
                       </label>
                       <input
                         type="number"
@@ -292,7 +292,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     <div>
                       <label className="text-[10px] text-slate-400 block">
-                        Magnitude $P$ (kN)
+                        Magnitude P (kN)
                       </label>
                       <input
                         type="number"
@@ -311,7 +311,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-slate-400 block">
-                        Pos $x$ (m)
+                        Pos x (m)
                       </label>
                       <input
                         type="number"
@@ -325,7 +325,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     <div>
                       <label className="text-[10px] text-slate-400 block">
-                        Moment $M_c$ (kNm)
+                        Moment Mc (kNm)
                       </label>
                       <input
                         type="number"
@@ -345,7 +345,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px] text-slate-400 block">
-                          Start $x_1$ (m)
+                          Start x1 (m)
                         </label>
                         <input
                           type="number"
@@ -359,7 +359,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                       <div>
                         <label className="text-[10px] text-slate-400 block">
-                          End $x_2$ (m)
+                          End x2 (m)
                         </label>
                         <input
                           type="number"
@@ -375,7 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px] text-slate-400 block">
-                          Intensity $w_1$ (kN/m)
+                          Intensity w1 (kN/m)
                         </label>
                         <input
                           type="number"
@@ -389,7 +389,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                       <div>
                         <label className="text-[10px] text-slate-400 block">
-                          Intensity $w_2$ (kN/m)
+                          Intensity w2 (kN/m)
                         </label>
                         <input
                           type="number"

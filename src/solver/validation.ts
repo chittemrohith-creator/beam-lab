@@ -1,35 +1,57 @@
 import { BeamConfig } from './types';
 
-export function validateBeamConfig(config: BeamConfig): { isValid: boolean; errors: string[] } {
+export function validateBeamConfig(config: unknown): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  if (typeof config.length !== 'number' || !isFinite(config.length) || config.length <= 0) {
+  if (!config || typeof config !== 'object') {
+    return { isValid: false, errors: ['Beam model configuration must be a valid non-null object.'] };
+  }
+
+  const cfg = config as Partial<BeamConfig> & { schemaVersion?: unknown };
+
+  if (cfg.schemaVersion !== undefined) {
+    if (typeof cfg.schemaVersion !== 'number' || cfg.schemaVersion !== 1) {
+      errors.push(`Unsupported model schema version: ${cfg.schemaVersion}. Expected version 1.`);
+    }
+  }
+
+  if (typeof cfg.length !== 'number' || !isFinite(cfg.length) || cfg.length <= 0) {
     errors.push('Beam length must be a finite positive number (L > 0).');
   }
 
-  if (typeof config.elasticModulus !== 'number' || !isFinite(config.elasticModulus) || config.elasticModulus <= 0) {
+  if (typeof cfg.elasticModulus !== 'number' || !isFinite(cfg.elasticModulus) || cfg.elasticModulus <= 0) {
     errors.push('Elastic modulus (E) must be a finite positive number (E > 0).');
   }
 
-  if (typeof config.momentOfInertia !== 'number' || !isFinite(config.momentOfInertia) || config.momentOfInertia <= 0) {
+  if (typeof cfg.momentOfInertia !== 'number' || !isFinite(cfg.momentOfInertia) || cfg.momentOfInertia <= 0) {
     errors.push('Moment of inertia (Iz) must be a finite positive number (I > 0).');
   }
 
-  if (!['simply_supported', 'cantilever'].includes(config.supportType)) {
+  if (!cfg.supportType || !['simply_supported', 'cantilever'].includes(cfg.supportType)) {
     errors.push('Invalid support type. Must be "simply_supported" or "cantilever".');
   }
 
-  if (!Array.isArray(config.loads)) {
+  if (!Array.isArray(cfg.loads)) {
     errors.push('Loads must be provided as an array.');
     return { isValid: false, errors };
   }
 
-  const L = config.length;
+  const L = typeof cfg.length === 'number' && isFinite(cfg.length) && cfg.length > 0 ? cfg.length : 0;
+  const seenIds = new Set<string>();
 
-  config.loads.forEach((load, idx) => {
+  cfg.loads.forEach((load, idx) => {
     const loadNum = idx + 1;
-    if (!load.id) {
-      errors.push(`Load #${loadNum}: Missing unique identifier.`);
+    if (!load || typeof load !== 'object') {
+      errors.push(`Load #${loadNum}: Invalid load definition.`);
+      return;
+    }
+
+    if (typeof load.id !== 'string' || load.id.trim() === '') {
+      errors.push(`Load #${loadNum}: ID must be a non-empty string.`);
+    } else if (seenIds.has(load.id)) {
+      errors.push(`Load #${loadNum}: Duplicate load ID "${load.id}". IDs must be unique.`);
+    } else {
+      seenIds.add(load.id);
     }
 
     if (load.type === 'point_force') {

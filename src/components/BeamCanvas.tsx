@@ -61,7 +61,7 @@ export const BeamCanvas: React.FC<BeamCanvasProps> = ({ config, onUpdateLoadPosi
             Drag point load nodes to position
           </span>
         </div>
-        <span className="text-xs text-slate-400 font-mono print:text-slate-700">Span $L = {config.length}$ m</span>
+        <span className="text-xs text-slate-400 font-mono print:text-slate-700">Span L = {config.length} m</span>
       </div>
 
       <svg
@@ -73,14 +73,11 @@ export const BeamCanvas: React.FC<BeamCanvasProps> = ({ config, onUpdateLoadPosi
       >
         <defs>
           {/* Arrow markers */}
-          <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="10" markerWidth="6" markerHeight="6" orient="auto">
+          <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="10" markerWidth="6" markerHeight="6" orient="0">
             <path d="M 0 0 L 10 0 L 5 10 z" fill="#f43f5e" />
           </marker>
-          <marker id="arrow-up" viewBox="0 0 10 10" refX="5" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+          <marker id="arrow-up" viewBox="0 0 10 10" refX="5" refY="0" markerWidth="6" markerHeight="6" orient="0">
             <path d="M 0 10 L 10 10 L 5 0 z" fill="#38bdf8" />
-          </marker>
-          <marker id="arrow-reaction" viewBox="0 0 10 10" refX="5" refY="0" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 10 L 10 10 L 5 0 z" fill="#10b981" />
           </marker>
           {/* Hatch pattern for supports */}
           <pattern id="hatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">

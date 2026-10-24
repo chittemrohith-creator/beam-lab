@@ -3,7 +3,125 @@ import { analyzeBeam, evaluateAtPoint } from './solver';
 import { validateBeamConfig } from './validation';
 import { BeamConfig } from './types';
 
-describe('Beam Solver Engine Regression Fixtures & Analytical Tests', () => {
+describe('Beam Solver Engine Comprehensive Analytical & Independent Regression Tests', () => {
+  // Test 1: Simply Supported Central Point Force (Original analytical formula test)
+  // R_A = P/2, R_B = P/2, M_max = P*L/4, delta_mid = P*L^3 / (48*E*I)
+  it('SS central point force (10m span, -10kN)', () => {
+    const P = -10; // -10 kN downwards = -10000 N
+    const L = 10;  // 10 m
+    const E = 200; // 200 GPa
+    const I = 1e8; // 1e8 mm^4 = 1e-4 m^4
+    // EI = 200e9 * 1e-4 = 2e7 N*m^2
+
+    const config: BeamConfig = {
+      length: L,
+      elasticModulus: E,
+      momentOfInertia: I,
+      supportType: 'simply_supported',
+      loads: [
+        { id: '1', type: 'point_force', x: 5, magnitude: P },
+      ],
+    };
+
+    const res = analyzeBeam(config);
+    expect(res.isValid).toBe(true);
+    expect(res.reactions.RA).toBeCloseTo(5000, 4); // 5 kN upwards
+    expect(res.reactions.RB).toBeCloseTo(5000, 4); // 5 kN upwards
+    expect(res.reactions.MA).toBe(0);
+
+    expect(res.extrema.maxMoment.value).toBeCloseTo(25000, 2);
+    expect(res.extrema.maxMoment.x).toBeCloseTo(5, 2);
+
+    const expectedDef = -10000 * Math.pow(10, 3) / (48 * 2e7);
+    expect(res.extrema.maxAbsDeflection.value).toBeCloseTo(expectedDef, 6);
+    expect(res.extrema.maxAbsDeflection.x).toBeCloseTo(5, 2);
+  });
+
+  // Test 2: Simply Supported Full UDL (Original analytical formula test)
+  // R = wL/2, M_max = wL^2/8, delta_mid = 5*w*L^4 / (384*E*I)
+  it('SS full UDL (8m span, -5kN/m)', () => {
+    const w = -5; // -5 kN/m downwards = -5000 N/m
+    const L = 8;  // 8 m
+    const E = 210; // 210 GPa
+    const I = 5e7; // 5e7 mm^4 = 5e-5 m^4
+
+    const config: BeamConfig = {
+      length: L,
+      elasticModulus: E,
+      momentOfInertia: I,
+      supportType: 'simply_supported',
+      loads: [
+        { id: '1', type: 'distributed', x1: 0, x2: L, w1: w, w2: w },
+      ],
+    };
+
+    const res = analyzeBeam(config);
+    expect(res.isValid).toBe(true);
+    expect(res.reactions.RA).toBeCloseTo(20000, 4);
+    expect(res.reactions.RB).toBeCloseTo(20000, 4);
+
+    expect(res.extrema.maxMoment.value).toBeCloseTo(40000, 2);
+    expect(res.extrema.maxMoment.x).toBeCloseTo(4, 2);
+
+    const expectedDef = -5 * 5000 * Math.pow(8, 4) / (384 * 1.05e7);
+    expect(res.extrema.maxAbsDeflection.value).toBeCloseTo(expectedDef, 6);
+  });
+
+  // Test 3: Cantilever Tip Force (Original analytical formula test)
+  it('Cantilever tip force (6m span, -12kN at tip)', () => {
+    const P = -12; // -12 kN = -12000 N at x=6
+    const L = 6;   // 6 m
+    const E = 200; // 200 GPa
+    const I = 8e7; // 8e7 mm^4 = 8e-5 m^4
+
+    const config: BeamConfig = {
+      length: L,
+      elasticModulus: E,
+      momentOfInertia: I,
+      supportType: 'cantilever',
+      loads: [
+        { id: '1', type: 'point_force', x: L, magnitude: P },
+      ],
+    };
+
+    const res = analyzeBeam(config);
+    expect(res.isValid).toBe(true);
+    expect(res.reactions.RA).toBeCloseTo(12000, 4);
+    expect(res.reactions.RB).toBe(0);
+    expect(res.reactions.MA).toBeCloseTo(72000, 4);
+
+    const expectedDef = -12000 * Math.pow(L, 3) / (3 * 1.6e7);
+    expect(res.extrema.maxAbsDeflection.value).toBeCloseTo(expectedDef, 6);
+    expect(res.extrema.maxAbsDeflection.x).toBeCloseTo(L, 2);
+  });
+
+  // Test 4: Cantilever Full UDL (Original analytical formula test)
+  it('Cantilever full UDL (5m span, -4kN/m)', () => {
+    const w = -4; // -4 kN/m = -4000 N/m
+    const L = 5;  // 5 m
+    const E = 200;
+    const I = 1e8;
+
+    const config: BeamConfig = {
+      length: L,
+      elasticModulus: E,
+      momentOfInertia: I,
+      supportType: 'cantilever',
+      loads: [
+        { id: '1', type: 'distributed', x1: 0, x2: L, w1: w, w2: w },
+      ],
+    };
+
+    const res = analyzeBeam(config);
+    expect(res.isValid).toBe(true);
+    expect(res.reactions.RA).toBeCloseTo(20000, 4);
+    expect(res.reactions.MA).toBeCloseTo(50000, 4);
+
+    const expectedDef = -4000 * Math.pow(L, 4) / (8 * 2e7);
+    expect(res.extrema.maxAbsDeflection.value).toBeCloseTo(expectedDef, 6);
+    expect(res.extrema.maxAbsDeflection.x).toBeCloseTo(L, 2);
+  });
+
   // Independent Regression Fixture 1: SS Center Point Force
   // L=6m, E=200e9 Pa (200 GPa), I=8e-6 m^4 (8e6 mm^4), EI=1.6e6 Nm^2
   // Downward P = 12000 N (-12 kN)
@@ -174,15 +292,44 @@ describe('Beam Solver Engine Regression Fixtures & Analytical Tests', () => {
     expect(ptInteriorEnd.m).not.toBe(0);
   });
 
-  // Test Invalid Models
-  it('rejects invalid models and nonfinite inputs', () => {
-    const invalidConfig1: BeamConfig = {
-      length: -5,
+  // Validation Edge Cases: null, non-objects, duplicate IDs, non-string IDs, schema versions
+  it('validateBeamConfig safely rejects invalid and malformed model inputs', () => {
+    expect(validateBeamConfig(null).isValid).toBe(false);
+    expect(validateBeamConfig(undefined).isValid).toBe(false);
+    expect(validateBeamConfig('string').isValid).toBe(false);
+    expect(validateBeamConfig({ length: 6, loads: null }).isValid).toBe(false);
+
+    // Schema version check
+    const invalidSchema = {
+      schemaVersion: 99,
+      length: 6,
       elasticModulus: 200,
       momentOfInertia: 1e8,
       supportType: 'simply_supported',
       loads: [],
     };
-    expect(validateBeamConfig(invalidConfig1).isValid).toBe(false);
+    expect(validateBeamConfig(invalidSchema).isValid).toBe(false);
+
+    // Non-string ID and Duplicate IDs
+    const duplicateIds = {
+      length: 6,
+      elasticModulus: 200,
+      momentOfInertia: 1e8,
+      supportType: 'simply_supported',
+      loads: [
+        { id: '1', type: 'point_force', x: 2, magnitude: -10 },
+        { id: '1', type: 'point_couple', x: 4, magnitude: 10 },
+      ],
+    };
+    expect(validateBeamConfig(duplicateIds).isValid).toBe(false);
+
+    const nonStringId = {
+      length: 6,
+      elasticModulus: 200,
+      momentOfInertia: 1e8,
+      supportType: 'simply_supported',
+      loads: [{ id: 123 as unknown as string, type: 'point_force', x: 2, magnitude: -10 }],
+    };
+    expect(validateBeamConfig(nonStringId).isValid).toBe(false);
   });
 });

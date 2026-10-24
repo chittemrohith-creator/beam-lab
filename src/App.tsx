@@ -9,52 +9,56 @@ import { ResultCards } from './components/ResultCards';
 import { DiagramView } from './components/DiagramView';
 import { HandCalcView } from './components/HandCalcView';
 import { ResetModal } from './components/ResetModal';
-import { PRESETS } from './presets';
+import { PRESETS, LOCAL_STORAGE_KEY } from './presets';
 import { exportToCSV, exportToJSON } from './export';
-import { LOCAL_STORAGE_KEY } from './presets';
 import { Printer, Download } from 'lucide-react';
 
 const DEFAULT_CONFIG: BeamConfig = PRESETS[0].config;
 
-export function App() {
-  const [config, setConfig] = useState<BeamConfig>(() => {
+function getInitialConfig(): BeamConfig {
+  try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.schemaVersion === 1 && parsed.model) {
-          const val = validateBeamConfig(parsed.model);
-          if (val.isValid) return parsed.model;
-        }
-      } catch {
-        // Fallback to default config on parse error
+      const parsed = JSON.parse(saved);
+      const model = parsed?.model || parsed;
+      if (validateBeamConfig(model).isValid) {
+        return model;
       }
     }
-    return DEFAULT_CONFIG;
-  });
+  } catch {
+    // Ignore storage parse errors
+  }
+  return DEFAULT_CONFIG;
+}
 
+export function App() {
+  const [config, setConfig] = useState<BeamConfig>(getInitialConfig);
   const [activeTab, setActiveTab] = useState<'all' | 'sfd' | 'bmd' | 'deflection' | 'handcalc'>('all');
+
+  // Compute initial analysis result matching initial config
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult>(() => analyzeBeam(config));
   const [isStale, setIsStale] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isResetOpen, setIsResetOpen] = useState<boolean>(false);
 
-  // Re-validate and mark results stale when config changes
+  // Sync validation, stale state, and localStorage on config change
   useEffect(() => {
     const val = validateBeamConfig(config);
     setValidationErrors(val.errors);
-    setIsStale(true);
 
-    // Save to localStorage
+    // Only mark stale if config differs from the currently solved analysis result config
+    const isConfigEqual = JSON.stringify(config) === JSON.stringify(analysisResult.config);
+    setIsStale(!isConfigEqual);
+
     try {
       localStorage.setItem(
         LOCAL_STORAGE_KEY,
         JSON.stringify({ schemaVersion: 1, model: config })
       );
     } catch {
-      // ignore storage quota errors
+      // Ignore quota errors
     }
-  }, [config]);
+  }, [config, analysisResult.config]);
 
   const handleSolve = () => {
     const res = analyzeBeam(config);
@@ -79,8 +83,9 @@ export function App() {
   };
 
   const handleExportCSV = () => {
-    if (analysisResult.isValid) {
-      exportToCSV(config, analysisResult.reactions, analysisResult.diagrams);
+    if (analysisResult.isValid && !isStale) {
+      // Export analysisResult.config matching analysisResult.reactions
+      exportToCSV(analysisResult.config, analysisResult.reactions, analysisResult.diagrams);
     }
   };
 
@@ -96,7 +101,7 @@ export function App() {
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        const modelToLoad = parsed.model || parsed;
+        const modelToLoad = parsed?.model || parsed;
         const val = validateBeamConfig(modelToLoad);
         if (val.isValid) {
           setConfig(modelToLoad);
@@ -122,12 +127,15 @@ export function App() {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (analysisResult.isValid && !isStale) {
+      window.print();
+    }
   };
+
+  const isExportDisabled = !analysisResult.isValid || isStale;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased">
-      {/* Educational Warning */}
       <EducationalWarning />
 
       {/* Header */}
@@ -147,14 +155,17 @@ export function App() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            disabled={!analysisResult.isValid}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
+            disabled={isExportDisabled}
+            title={isExportDisabled ? 'Solve model to enable CSV export' : 'Export CSV data'}
+            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
           >
             <Download className="w-3.5 h-3.5" /> CSV Data
           </button>
           <button
             onClick={handlePrint}
-            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
+            disabled={isExportDisabled}
+            title={isExportDisabled ? 'Solve model to enable Print report' : 'Print report'}
+            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-xs text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors"
           >
             <Printer className="w-3.5 h-3.5" /> Print Report
           </button>
@@ -163,7 +174,6 @@ export function App() {
 
       {/* Main Workbench Layout */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left Control Sidebar */}
         <Sidebar
           config={config}
           onChange={handleConfigChange}
@@ -175,13 +185,10 @@ export function App() {
           onReset={() => setIsResetOpen(true)}
         />
 
-        {/* Right Main Canvas & Visualizations */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 bg-slate-950 print:bg-white print:p-0">
-          {/* Visual Beam Canvas */}
           <BeamCanvas config={config} onUpdateLoadPosition={handleUpdateLoadPosition} />
 
-          {/* Results Section */}
-          <ResultCards result={analysisResult} />
+          <ResultCards result={analysisResult} isStale={isStale} />
 
           {/* Visualization Navigation Tabs */}
           <div className="flex items-center justify-between border-b border-slate-800 pb-2 print:hidden">
@@ -241,22 +248,21 @@ export function App() {
 
           {/* Diagrams Display */}
           {(activeTab === 'all' || activeTab === 'sfd') && (
-            <DiagramView result={analysisResult} type="shear" />
+            <DiagramView result={analysisResult} type="shear" isStale={isStale} />
           )}
 
           {(activeTab === 'all' || activeTab === 'bmd') && (
-            <DiagramView result={analysisResult} type="moment" />
+            <DiagramView result={analysisResult} type="moment" isStale={isStale} />
           )}
 
           {(activeTab === 'all' || activeTab === 'deflection') && (
-            <DiagramView result={analysisResult} type="deflection" />
+            <DiagramView result={analysisResult} type="deflection" isStale={isStale} />
           )}
 
           {activeTab === 'handcalc' && <HandCalcView result={analysisResult} />}
         </main>
       </div>
 
-      {/* Confirmation Reset Modal */}
       <ResetModal
         isOpen={isResetOpen}
         onConfirm={handleConfirmReset}
