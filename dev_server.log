@@ -1,0 +1,9 @@
+
+> beam-lab@0.1.0 dev
+> vite --port 3000
+
+
+  VITE v5.4.21  ready in 295 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose

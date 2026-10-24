@@ -1,0 +1,20 @@
+
+> beam-lab@0.1.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 608 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+8:00:41 AM [vite] hmr update /src/components/Sidebar.tsx, /src/index.css
+8:08:51 AM [vite] hmr update /src/components/DiagramView.tsx, /src/index.css
+8:09:37 AM [vite] hmr update /src/components/Sidebar.tsx, /src/index.css
+8:10:05 AM [vite] hmr update /src/App.tsx, /src/index.css
+8:10:50 AM [vite] hmr update /src/App.tsx, /src/index.css
+8:31:54 AM [vite] hmr update /src/App.tsx, /src/index.css
+8:32:33 AM [vite] hmr update /src/App.tsx, /src/index.css
+8:38:19 AM [vite] hmr update /src/components/Sidebar.tsx, /src/index.css
+8:38:32 AM [vite] hmr update /src/App.tsx, /src/index.css
+8:39:36 AM [vite] hmr update /src/App.tsx, /src/index.css
+8:39:41 AM [vite] hmr update /src/index.css
