@@ -9,6 +9,7 @@ import { ResultCards } from './components/ResultCards';
 import { DiagramView } from './components/DiagramView';
 import { HandCalcView } from './components/HandCalcView';
 import { ResetModal } from './components/ResetModal';
+import { PrintReport } from './components/PrintReport';
 import { PRESETS, LOCAL_STORAGE_KEY } from './presets';
 import { exportToCSV, exportToJSON } from './export';
 import { Printer, Download } from 'lucide-react';
@@ -268,6 +269,9 @@ export function App() {
         onConfirm={handleConfirmReset}
         onCancel={() => setIsResetOpen(false)}
       />
+
+      {/* Print-Only Comprehensive Report Snapshot */}
+      <PrintReport result={analysisResult} />
     </div>
   );
 }

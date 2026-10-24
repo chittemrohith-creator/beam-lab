@@ -26,6 +26,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [selectedPreset, setSelectedPreset] = useState<string>('');
 
+  const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
+
+  const getInputValue = (key: string, numValue: number): string => {
+    if (key in draftInputs) {
+      return draftInputs[key];
+    }
+    return String(numValue);
+  };
+
+  const handleInputChange = (
+    key: string,
+    rawVal: string,
+    onValid: (num: number) => void
+  ) => {
+    setDraftInputs((prev) => ({ ...prev, [key]: rawVal }));
+    const parsed = parseFloat(rawVal);
+    if (!isNaN(parsed) && isFinite(parsed)) {
+      onValid(parsed);
+    }
+  };
+
   const updateField = <K extends keyof BeamConfig>(field: K, value: BeamConfig[K]) => {
     onChange({ ...config, [field]: value });
   };
@@ -160,24 +181,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-slate-400 block mb-1">
+            <label htmlFor="input-beam-length" className="text-xs text-slate-400 block mb-1">
               Length L (m)
             </label>
             <input
+              id="input-beam-length"
               type="number"
               step="0.1"
               min="0.1"
-              value={config.length}
-              onChange={(e) => updateField('length', parseFloat(e.target.value) || 0)}
+              value={getInputValue('length', config.length)}
+              onChange={(e) =>
+                handleInputChange('length', e.target.value, (num) => updateField('length', num))
+              }
               className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
           <div>
-            <label className="text-xs text-slate-400 block mb-1">
+            <label htmlFor="select-support-type" className="text-xs text-slate-400 block mb-1">
               Support Type
             </label>
             <select
+              id="select-support-type"
               value={config.supportType}
               onChange={(e) => updateField('supportType', e.target.value as BeamConfig['supportType'])}
               className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
@@ -190,29 +215,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-slate-400 block mb-1">
+            <label htmlFor="input-elasticity" className="text-xs text-slate-400 block mb-1">
               Elasticity E (GPa)
             </label>
             <input
+              id="input-elasticity"
               type="number"
               step="1"
               min="0.1"
-              value={config.elasticModulus}
-              onChange={(e) => updateField('elasticModulus', parseFloat(e.target.value) || 0)}
+              value={getInputValue('elasticModulus', config.elasticModulus)}
+              onChange={(e) =>
+                handleInputChange('elasticModulus', e.target.value, (num) => updateField('elasticModulus', num))
+              }
               className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
           <div>
-            <label className="text-xs text-slate-400 block mb-1">
+            <label htmlFor="input-inertia" className="text-xs text-slate-400 block mb-1">
               Inertia Iz (mm⁴)
             </label>
             <input
+              id="input-inertia"
               type="number"
               step="1000000"
               min="1"
-              value={config.momentOfInertia}
-              onChange={(e) => updateField('momentOfInertia', parseFloat(e.target.value) || 0)}
+              value={getInputValue('momentOfInertia', config.momentOfInertia)}
+              onChange={(e) =>
+                handleInputChange('momentOfInertia', e.target.value, (num) => updateField('momentOfInertia', num))
+              }
               className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -277,29 +308,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {load.type === 'point_force' && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">
+                      <label htmlFor={`load-${load.id}-x`} className="text-[10px] text-slate-400 block">
                         Pos x (m)
                       </label>
                       <input
+                        id={`load-${load.id}-x`}
                         type="number"
                         step="0.1"
-                        value={(load as PointForceLoad).x}
+                        value={getInputValue(`load-${load.id}-x`, (load as PointForceLoad).x)}
                         onChange={(e) =>
-                          handleUpdateLoad(load.id, { x: parseFloat(e.target.value) || 0 })
+                          handleInputChange(`load-${load.id}-x`, e.target.value, (num) =>
+                            handleUpdateLoad(load.id, { x: num })
+                          )
                         }
                         className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">
+                      <label htmlFor={`load-${load.id}-mag`} className="text-[10px] text-slate-400 block">
                         Magnitude P (kN)
                       </label>
                       <input
+                        id={`load-${load.id}-mag`}
                         type="number"
                         step="1"
-                        value={(load as PointForceLoad).magnitude}
+                        value={getInputValue(`load-${load.id}-mag`, (load as PointForceLoad).magnitude)}
                         onChange={(e) =>
-                          handleUpdateLoad(load.id, { magnitude: parseFloat(e.target.value) || 0 })
+                          handleInputChange(`load-${load.id}-mag`, e.target.value, (num) =>
+                            handleUpdateLoad(load.id, { magnitude: num })
+                          )
                         }
                         className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                       />
@@ -310,29 +347,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {load.type === 'point_couple' && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-400 block">
+                      <label htmlFor={`load-${load.id}-x`} className="text-[10px] text-slate-400 block">
                         Pos x (m)
                       </label>
                       <input
+                        id={`load-${load.id}-x`}
                         type="number"
                         step="0.1"
-                        value={(load as PointCoupleLoad).x}
+                        value={getInputValue(`load-${load.id}-x`, (load as PointCoupleLoad).x)}
                         onChange={(e) =>
-                          handleUpdateLoad(load.id, { x: parseFloat(e.target.value) || 0 })
+                          handleInputChange(`load-${load.id}-x`, e.target.value, (num) =>
+                            handleUpdateLoad(load.id, { x: num })
+                          )
                         }
                         className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">
+                      <label htmlFor={`load-${load.id}-mag`} className="text-[10px] text-slate-400 block">
                         Moment Mc (kNm)
                       </label>
                       <input
+                        id={`load-${load.id}-mag`}
                         type="number"
                         step="1"
-                        value={(load as PointCoupleLoad).magnitude}
+                        value={getInputValue(`load-${load.id}-mag`, (load as PointCoupleLoad).magnitude)}
                         onChange={(e) =>
-                          handleUpdateLoad(load.id, { magnitude: parseFloat(e.target.value) || 0 })
+                          handleInputChange(`load-${load.id}-mag`, e.target.value, (num) =>
+                            handleUpdateLoad(load.id, { magnitude: num })
+                          )
                         }
                         className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                       />
@@ -344,29 +387,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-slate-400 block">
+                        <label htmlFor={`load-${load.id}-x1`} className="text-[10px] text-slate-400 block">
                           Start x1 (m)
                         </label>
                         <input
+                          id={`load-${load.id}-x1`}
                           type="number"
                           step="0.1"
-                          value={(load as DistributedLoad).x1}
+                          value={getInputValue(`load-${load.id}-x1`, (load as DistributedLoad).x1)}
                           onChange={(e) =>
-                            handleUpdateLoad(load.id, { x1: parseFloat(e.target.value) || 0 })
+                            handleInputChange(`load-${load.id}-x1`, e.target.value, (num) =>
+                              handleUpdateLoad(load.id, { x1: num })
+                            )
                           }
                           className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 block">
+                        <label htmlFor={`load-${load.id}-x2`} className="text-[10px] text-slate-400 block">
                           End x2 (m)
                         </label>
                         <input
+                          id={`load-${load.id}-x2`}
                           type="number"
                           step="0.1"
-                          value={(load as DistributedLoad).x2}
+                          value={getInputValue(`load-${load.id}-x2`, (load as DistributedLoad).x2)}
                           onChange={(e) =>
-                            handleUpdateLoad(load.id, { x2: parseFloat(e.target.value) || 0 })
+                            handleInputChange(`load-${load.id}-x2`, e.target.value, (num) =>
+                              handleUpdateLoad(load.id, { x2: num })
+                            )
                           }
                           className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                         />
@@ -374,29 +423,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-slate-400 block">
+                        <label htmlFor={`load-${load.id}-w1`} className="text-[10px] text-slate-400 block">
                           Intensity w1 (kN/m)
                         </label>
                         <input
+                          id={`load-${load.id}-w1`}
                           type="number"
                           step="1"
-                          value={(load as DistributedLoad).w1}
+                          value={getInputValue(`load-${load.id}-w1`, (load as DistributedLoad).w1)}
                           onChange={(e) =>
-                            handleUpdateLoad(load.id, { w1: parseFloat(e.target.value) || 0 })
+                            handleInputChange(`load-${load.id}-w1`, e.target.value, (num) =>
+                              handleUpdateLoad(load.id, { w1: num })
+                            )
                           }
                           className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 block">
+                        <label htmlFor={`load-${load.id}-w2`} className="text-[10px] text-slate-400 block">
                           Intensity w2 (kN/m)
                         </label>
                         <input
+                          id={`load-${load.id}-w2`}
                           type="number"
                           step="1"
-                          value={(load as DistributedLoad).w2}
+                          value={getInputValue(`load-${load.id}-w2`, (load as DistributedLoad).w2)}
                           onChange={(e) =>
-                            handleUpdateLoad(load.id, { w2: parseFloat(e.target.value) || 0 })
+                            handleInputChange(`load-${load.id}-w2`, e.target.value, (num) =>
+                              handleUpdateLoad(load.id, { w2: num })
+                            )
                           }
                           className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
                         />
@@ -422,7 +477,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Download className="w-3.5 h-3.5" /> Save JSON
           </button>
-          <label className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer">
+          <label
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+                fileInput?.click();
+              }
+            }}
+            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
             <Upload className="w-3.5 h-3.5" /> Load JSON
             <input
               type="file"

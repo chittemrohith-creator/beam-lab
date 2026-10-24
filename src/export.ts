@@ -20,15 +20,16 @@ export function exportToCSV(
   lines.push(`B (x=${config.length}m),Vertical Force (RB),${reactions.RB.toFixed(4)},${(reactions.RB / 1000).toFixed(4)}`);
   lines.push('');
   lines.push('# DIAGRAM DATA');
-  lines.push('x (m),Shear Force V (kN),Bending Moment M (kNm),Slope theta (rad),Deflection v (mm)');
+  lines.push('x (m),Discontinuity Side,Shear Force V (kN),Bending Moment M (kNm),Slope theta (rad),Deflection v (mm)');
 
   for (const pt of diagrams) {
-    const x = pt.x.toFixed(4);
-    const v_kN = (pt.v / 1000).toFixed(4);
-    const m_kNm = (pt.m / 1000).toFixed(4);
-    const slope_rad = pt.slope.toExponential(4);
-    const def_mm = (pt.deflection * 1000).toFixed(4);
-    lines.push(`${x},${v_kN},${m_kNm},${slope_rad},${def_mm}`);
+    const x = String(pt.x);
+    const side = pt.side || 'continuous';
+    const v_kN = String(pt.v / 1000);
+    const m_kNm = String(pt.m / 1000);
+    const slope_rad = String(pt.slope);
+    const def_mm = String(pt.deflection * 1000);
+    lines.push(`${x},${side},${v_kN},${m_kNm},${slope_rad},${def_mm}`);
   }
 
   const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(lines.join('\n'));

@@ -49,17 +49,17 @@ export const DiagramView: React.FC<DiagramViewProps> = ({ result, type, isStale 
     getValue = (pt: DiagramPoint) => pt.deflection * 1000;
   }
 
-  let maxAbsVal = 0;
+  let realMaxAbsVal = 0;
   for (const pt of diagrams) {
     const val = Math.abs(getValue(pt));
-    if (val > maxAbsVal) maxAbsVal = val;
+    if (val > realMaxAbsVal) realMaxAbsVal = val;
   }
-  if (maxAbsVal === 0) maxAbsVal = 1;
+  const scaleMaxAbsVal = realMaxAbsVal > 0 ? realMaxAbsVal : 1;
 
   const zeroYPx = paddingY + chartHeight / 2;
 
   const valToPx = (val: number) => {
-    const scale = (chartHeight / 2 - 10) / maxAbsVal;
+    const scale = (chartHeight / 2 - 10) / scaleMaxAbsVal;
     return zeroYPx - val * scale;
   };
 
@@ -103,16 +103,17 @@ export const DiagramView: React.FC<DiagramViewProps> = ({ result, type, isStale 
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">{title}</h3>
         <span className="text-xs text-slate-400 font-mono">
-          Max |{unit}|: {maxAbsVal.toFixed(3)} {unit}
+          Max |{unit}|: {realMaxAbsVal.toFixed(3)} {unit}
         </span>
       </div>
 
-      <svg
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        className="w-full h-auto min-w-[600px] cursor-crosshair"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
+      <div className="overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          className="w-full h-auto min-w-[600px] cursor-crosshair"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
         <line
           x1={paddingX}
           y1={zeroYPx}
@@ -137,13 +138,13 @@ export const DiagramView: React.FC<DiagramViewProps> = ({ result, type, isStale 
         />
 
         <text x={paddingX - 10} y={paddingY + 10} fill="#94a3b8" fontSize="10" textAnchor="end">
-          +{(maxAbsVal).toFixed(1)} {unit}
+          +{(realMaxAbsVal).toFixed(1)} {unit}
         </text>
         <text x={paddingX - 10} y={zeroYPx + 3} fill="#94a3b8" fontSize="10" textAnchor="end">
           0
         </text>
         <text x={paddingX - 10} y={paddingY + chartHeight - 5} fill="#94a3b8" fontSize="10" textAnchor="end">
-          -{(maxAbsVal).toFixed(1)} {unit}
+          -{(realMaxAbsVal).toFixed(1)} {unit}
         </text>
 
         <text x={paddingX} y={paddingY + chartHeight + 20} fill="#94a3b8" fontSize="10" textAnchor="middle">
@@ -183,7 +184,8 @@ export const DiagramView: React.FC<DiagramViewProps> = ({ result, type, isStale 
             </g>
           </g>
         )}
-      </svg>
+        </svg>
+      </div>
     </div>
   );
 };
